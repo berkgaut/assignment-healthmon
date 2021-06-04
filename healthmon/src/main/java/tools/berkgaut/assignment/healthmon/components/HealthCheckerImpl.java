@@ -1,5 +1,6 @@
 package tools.berkgaut.assignment.healthmon.components;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import tools.berkgaut.assignment.healthmon.entities.ServiceStatus;
 import java.time.Duration;
 
 @Component
+@Slf4j
 public class HealthCheckerImpl implements HealthChecker {
 
     @Override
@@ -28,6 +30,7 @@ public class HealthCheckerImpl implements HealthChecker {
         } catch (Exception e) {
             success = false;
         }
+        log.info("Check result for {}: succeed={}", healthCheckUrl, success);
         return success;
     }
 }

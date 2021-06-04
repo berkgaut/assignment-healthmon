@@ -3,6 +3,7 @@ package tools.berkgaut.assignment.healthmon;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,22 +36,27 @@ class HealthmonApplicationTests {
 	private int localServerPort;
 	
 	@Autowired
-	TestRestTemplate restTemplate;
+	private TestRestTemplate restTemplate;
 
 	@Autowired
-	JdbcTemplate jdbcTemplate;
+	private JdbcTemplate jdbcTemplate;
 
 	@MockBean
-	HealthChecker mockHealthChecker;
+	private HealthChecker mockHealthChecker;
 
 	@Autowired
-	HealthMonitor healthMonitor;
-	public static final TypeReference<ArrayList<Service>> LIST_OF_SERVICES_TYPE = new TypeReference<>() {};
+	private HealthMonitor healthMonitor;
+
+	private static final TypeReference<ArrayList<Service>> LIST_OF_SERVICES_TYPE = new TypeReference<>() {};
+
+	@BeforeEach
+	private void cleanupDb() {
+		jdbcTemplate.execute("delete from healthcheck");
+		jdbcTemplate.execute("delete from service");
+	}
 
 	@Test
 	public void serviceCrudFlow() throws JsonProcessingException {
-		cleanupDb();
-
 		// GIVEN no services added yet
 		// WHEN list of services is requested
 		// THEN the result is an empty list
@@ -64,6 +70,7 @@ class HealthmonApplicationTests {
 		// GIVEN no services added yet
 		// WHEN a asked to create a new service
 		// THEN the result contains a service with assigned ID
+		// AND service status is UNKNOWN
 		String serviceId;
 		{
 			Service serviceData = Service.builder()
@@ -99,11 +106,11 @@ class HealthmonApplicationTests {
 
 		// GIVEN a service exists
 		// WHEN asked to deleted a service
+		// THEN service list is empty
 		{
 			ResponseEntity<Void> response = deleteService(serviceId);
 			assertThat(response.getStatusCodeValue()).isEqualTo(200);
 		}
-		// THEN service list is empty
 		{
 			ResponseEntity<String> response = getServices();
 			assertThat(response.getStatusCodeValue()).isEqualTo(200);
@@ -114,7 +121,7 @@ class HealthmonApplicationTests {
 
 	@Test
 	public void healthy() throws Exception {
-		cleanupDb();
+		// GIVEN a service added
 		{
 			Service serviceData = Service.builder()
 					.name("test service")
@@ -124,8 +131,11 @@ class HealthmonApplicationTests {
 			ResponseEntity<String> response = createService((new ObjectMapper()).writeValueAsString(serviceData));
 			assertThat(response.getStatusCodeValue()).isEqualTo(200);
 		}
-		when(mockHealthChecker.performCheck(any(), any())).thenReturn(true);
+		// AND health check was SUCCESSFUL
+		when(mockHealthChecker.performCheck(any(), any())).thenReturn(true); // healsuccess
 		healthMonitor.performChecks();
+		// WHEN asked for a service list
+		// THEN service status is OK
 		{
 			ResponseEntity<String> response = getServices();
 			assertThat(response.getStatusCodeValue()).isEqualTo(200);
@@ -133,10 +143,36 @@ class HealthmonApplicationTests {
 			assertThat(serviceList).hasSize(1);
 			assertThat(serviceList.get(0).getStatus()).isEqualTo("OK");
 		}
-
 	}
 
-		// ---- helper methods
+	@Test
+	public void unhealthy() throws Exception {
+		// GIVEN a service added
+		{
+			Service serviceData = Service.builder()
+					.name("test service")
+					.url("https://test-service.example.com:6789/")
+					.timeoutMillis(9000)
+					.build();
+			ResponseEntity<String> response = createService((new ObjectMapper()).writeValueAsString(serviceData));
+			assertThat(response.getStatusCodeValue()).isEqualTo(200);
+		}
+		// AND health check FAILED
+		when(mockHealthChecker.performCheck(any(), any())).thenReturn(false); //
+		healthMonitor.performChecks();
+		// WHEN asked for a service list
+		// THEN service status is FAIL
+		{
+			ResponseEntity<String> response = getServices();
+			assertThat(response.getStatusCodeValue()).isEqualTo(200);
+			List<Service> serviceList = (new ObjectMapper()).readValue(response.getBody(), LIST_OF_SERVICES_TYPE);
+			// THEN service status is OK
+			assertThat(serviceList).hasSize(1);
+			assertThat(serviceList.get(0).getStatus()).isEqualTo("FAIL");
+		}
+	}
+
+	// ---- helper methods
 
 	private ResponseEntity<String> getServices() {
 		URI uri = getServiceUriBuilder().path("/v1/services").build();
@@ -171,10 +207,5 @@ class HealthmonApplicationTests {
 	private UriBuilder getServiceUriBuilder() {
 		UriBuilderFactory factory = new DefaultUriBuilderFactory();
 		return factory.builder().scheme("http").host("localhost").port(localServerPort);
-	}
-
-	private void cleanupDb() {
-		jdbcTemplate.execute("delete from healthcheck");
-		jdbcTemplate.execute("delete from service");
 	}
 }

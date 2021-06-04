@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+
+  healthmon:
+    image: healthmon:0.0.1-SNAPSHOT
+    restart: on-failure
+    depends_on:
+      - healthmon-mysql
+    ports:
+      - "8080:8080"
+
+  healthmon-mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=JxS5Y9HuI3OpY6kFf6TlMVuuGxcohp7C
+      - MYSQL_DATABASE=healthmon
+      - MYSQL_USER=healthmon-app
+      - MYSQL_PASSWORD=riP8BEglH3REwOugqxHoeuaYuEQCvjO8
+    ports:
+      - "3306:3306"
+
+  target-1:
+    image: dummy-service:0.0.1-SNAPSHOT
+  target-2:
+    image: dummy-service:0.0.1-SNAPSHOT
+  target-3:
+    image: dummy-service:0.0.1-SNAPSHOT

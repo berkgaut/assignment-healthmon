@@ -23,12 +23,12 @@ public class HealthMonitorImpl implements HealthMonitor {
     @Transactional
     public void performChecks() {
         try {
-            healthCheckRepository.scheduleCompletedChecks();
+            healthCheckRepository.reScheduleCompletedChecks();
             healthCheckRepository.getPendingChecks().forEach(healthCheck -> {
                 Duration timeout = Duration.ofMillis(healthCheck.getService().getHealthCheckTimeoutMillis());
                 String healthCheckUrl = healthCheck.getService().getHealthCheckUrl();
                 boolean success = healthChecker.performCheck(timeout, healthCheckUrl);
-                healthCheck.setServiceStatus(success ? ServiceStatus.OK : ServiceStatus.FAILURE);
+                healthCheck.setServiceStatus(success ? ServiceStatus.OK : ServiceStatus.FAIL);
                 healthCheck.setCheckStatus(CheckStatus.COMPLETE);
                 healthCheckRepository.save(healthCheck);
             });

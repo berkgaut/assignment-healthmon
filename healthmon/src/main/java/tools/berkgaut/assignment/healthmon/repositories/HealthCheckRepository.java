@@ -14,5 +14,5 @@ public interface HealthCheckRepository extends JpaRepository<HealthCheckEntity, 
     @Modifying
     @Query("update HealthCheckEntity healthcheck set healthcheck.checkStatus = tools.berkgaut.assignment.healthmon.entities.CheckStatus.PENDING" +
             " where healthcheck.checkStatus = tools.berkgaut.assignment.healthmon.entities.CheckStatus.COMPLETE")
-    void scheduleCompletedChecks();
+    void reScheduleCompletedChecks();
 }

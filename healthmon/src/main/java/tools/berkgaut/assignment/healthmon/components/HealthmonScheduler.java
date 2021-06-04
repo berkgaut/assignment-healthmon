@@ -7,15 +7,15 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(value = "enable_scheduled_actions", matchIfMissing = false, havingValue = "true")
-public class HealthMonScheduler {
+@Slf4j
+public class HealthmonScheduler {
 
     @Autowired
     HealthMonitor healthMonitor;
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(cron = "${healthmon.schedule:-}")
     public void performChecks() {
+        log.info("Perform checks");
         healthMonitor.performChecks();
     }
-
 }

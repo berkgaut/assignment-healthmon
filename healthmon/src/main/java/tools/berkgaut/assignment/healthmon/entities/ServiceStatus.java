@@ -9,7 +9,7 @@ import static java.util.Arrays.stream;
 public enum ServiceStatus {
     UNKNOWN(0),
     OK(1),
-    FAILURE(2)
+    FAIL(2)
     ;
 
     private final int value;
